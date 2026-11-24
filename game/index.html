@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Neon Tide: Palmira Bay</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #0b1020; height: 100%;
+    font-family: "Segoe UI", system-ui, sans-serif; color: #f5efe2; }
+  #scene { position: fixed; inset: 0; }
+  canvas.webgl { display: block; }
+  .hud { position: fixed; z-index: 5; pointer-events: none; }
+  #stars { top: 14px; right: 18px; font-size: 30px; letter-spacing: 4px; color: #ffd23c;
+    text-shadow: 0 2px 6px rgba(0,0,0,.7); }
+  #stars .off { color: rgba(255,255,255,.22); }
+  #stats { top: 14px; left: 18px; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
+  #stats b { color: #ffd23c; }
+  #objective { top: 64px; left: 18px; max-width: 380px; background: rgba(8,12,24,.62);
+    border-left: 4px solid #ff5d7a; padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 14px; }
+  #objective h4 { margin: 0 0 2px; color: #ff8fa5; font-size: 12px; letter-spacing: 2px; }
+  #objective p { margin: 0; }
+  #minimap { right: 18px; bottom: 18px; border: 2px solid rgba(255,255,255,.35);
+    border-radius: 10px; background: rgba(8,12,24,.72); }
+  #toast { left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 19px; font-weight: 600;
+    background: rgba(8,12,24,.66); padding: 8px 18px; border-radius: 24px; opacity: 0; transition: opacity .3s; }
+  #banner { left: 50%; top: 22%; transform: translateX(-50%); text-align: center; opacity: 0; transition: opacity .4s; }
+  #banner h2 { margin: 0; font-size: 42px; letter-spacing: 3px; color: #ffd23c; text-shadow: 0 3px 12px rgba(0,0,0,.8); }
+  #banner p { margin: 4px 0 0; font-size: 17px; text-shadow: 0 2px 6px rgba(0,0,0,.8); }
+  #bustbar { left: 50%; bottom: 190px; transform: translateX(-50%); width: 260px; height: 12px;
+    border: 1px solid rgba(255,255,255,.5); border-radius: 6px; display: none; }
+  #bustfill { height: 100%; width: 0%; background: #3f8cff; border-radius: 6px; }
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    background: linear-gradient(180deg, rgba(10,14,30,.25), rgba(10,14,30,.78)); }
+  .screen h1 { font-size: 64px; margin: 0; letter-spacing: 2px; color: #fff;
+    text-shadow: 0 4px 0 #ff5d7a, 0 10px 28px rgba(0,0,0,.7); }
+  .screen h1 span { color: #ffd23c; }
+  .screen .tag { font-size: 19px; color: #ffe9b8; margin: 8px 0 4px; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+  .screen .story { max-width: 560px; font-size: 15px; color: #e8e2d2; text-shadow: 0 1px 6px rgba(0,0,0,.9); }
+  .screen button { pointer-events: auto; margin: 10px 6px 0; font-size: 19px; font-weight: 700;
+    padding: 12px 34px; border: 0; border-radius: 30px; cursor: pointer; background: #ffd23c; color: #221a05; }
+  .screen button.ghost { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.5); }
+  .screen .keys { margin-top: 18px; font-size: 13.5px; color: #cfd6e4; text-shadow: 0 1px 5px rgba(0,0,0,.9); line-height: 1.7; }
+  #wasted { display: none; background: rgba(30,0,0,.45); }
+  #wasted h1 { text-shadow: 0 4px 0 #7a0d1d, 0 10px 28px rgba(0,0,0,.8); }
+  #busted { display: none; background: rgba(0,10,40,.45); }
+  #complete { display: none; }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+
+<div class="hud" id="stars"></div>
+<div class="hud" id="stats"></div>
+<div class="hud" id="objective"><h4 id="obj-title">FREE ROAM</h4><p id="obj-text">Explore Palmira Bay. Walk to a car and press E to drive it.</p></div>
+<canvas class="hud" id="minimap" width="190" height="190"></canvas>
+<div class="hud" id="toast"></div>
+<div class="hud" id="banner"><h2 id="banner-title"></h2><p id="banner-sub"></p></div>
+<div class="hud" id="bustbar"><div id="bustfill"></div></div>
+
+<div class="screen" id="menu">
+  <h1>NEON <span>TIDE</span></h1>
+  <p class="tag">P A L M I R A &nbsp; B A Y</p>
+  <p class="story">Vex Marlowe came home to Palmira Bay with nothing but a debt and a fast pair of hands.
+  The Solace family runs the docks, the clubs and half the police radios in this town — and they remember what Vex owes.
+  Work the streets, run their jobs, and buy back your name one mission at a time.</p>
+  <div>
+    <button id="btn-start">START STORY</button>
+    <button id="btn-continue" class="ghost">CONTINUE</button>
+    <button id="btn-free" class="ghost">FREE ROAM</button>
+  </div>
+  <p class="keys">WASD / arrows — move &amp; drive &nbsp;·&nbsp; E — enter / exit car &nbsp;·&nbsp; SPACE — handbrake / shoot on foot<br>
+  SHIFT — sprint &nbsp;·&nbsp; M — missions &nbsp;·&nbsp; The law watches: theft, hits and gunfire raise your wanted stars.</p>
+</div>
+
+<div class="screen" id="wasted"><h1>WASTED</h1><p class="tag">The bay keeps what it catches.</p><div><button id="btn-wasted">RESPAWN AT CLINIC</button></div></div>
+<div class="screen" id="busted"><h1>BUSTED</h1><p class="tag">Palmira PD thanks you for your cooperation.</p><div><button id="btn-busted">PAY THE FINE, WALK OUT</button></div></div>
+<div class="screen" id="complete"><h1>NAME <span>BOUGHT BACK</span></h1><p class="story">Every job is done. The Solace family folds your debt into the bay mist — Palmira is yours to roam.</p><div><button id="btn-roam">KEEP ROAMING</button></div></div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/config.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/city.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/peds.js"></script>
+<script src="src/police.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/player.js"></script>
+<script src="src/main.js"></script>
+<script src="src/shots.js"></script>
+</body>
+</html>
