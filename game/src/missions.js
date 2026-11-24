@@ -1,6 +1,8 @@
-// Neon Tide — the story: three jobs for the Solace family that teach the
-// city, the car and the law, in that order. Each job is a chain of stages;
-// a stage is an objective line, a glowing beacon in the world and a test.
+// Neon Tide — the story: four jobs for the Solace family that teach the
+// city, the car, the law and the clock, in that order. Each job is a chain
+// of stages; a stage is an objective line, a glowing beacon in the world
+// and a test. A stage may carry a `pickup` colour: a glowing crate waits
+// at its target and is collected by reaching it.
 'use strict';
 NT.missions = (function () {
   let beacon = null, scene = null, packageMesh = null;
@@ -19,7 +21,7 @@ NT.missions = (function () {
       title: 'JOB 2 · HOT DELIVERY',
       intro: 'A package is waiting in the alley behind the Palms Hotel. Pick it up and drop it at the docks — the family is watching the clock.',
       stages: [
-        { text: 'Pick up the package behind the Palms Hotel', kind: 'reach', at: () => ({ x: -126, z: -84 }), r: 5, onfoot: true },
+        { text: 'Pick up the package behind the Palms Hotel', kind: 'reach', at: () => ({ x: -126, z: -84 }), r: 5, onfoot: true, pickup: 0xffd23c },
         { text: 'Deliver it to the docks, south-east gate — 150 seconds', kind: 'reach', at: () => ({ x: 252, z: 336 }), r: 9, timer: 150, heat: 2.9 },
       ],
       reward: 600,
@@ -33,6 +35,15 @@ NT.missions = (function () {
         { text: 'Reach the hill safehouse, north-west corner', kind: 'reach', at: () => ({ x: -336, z: -336 }), r: 10 },
       ],
       reward: 1200,
+    },
+    {
+      title: 'JOB 4 · BAY RUNNER',
+      intro: 'One last run. A cooler of "fresh catch" waits at the beach kiosk on the south shore — grab it and haul it clear across town to the north gate before the ice melts. The clock is the only cop on this one.',
+      stages: [
+        { text: 'Pick up the cooler at the beach kiosk, south shore', kind: 'reach', at: () => ({ x: 168, z: 378 }), r: 6, pickup: 0x3fb8af },
+        { text: 'Deliver it across the map to the north gate — 120 seconds', kind: 'reach', at: () => ({ x: -252, z: -336 }), r: 10, timer: 120, heat: 1.5 },
+      ],
+      reward: 900,
     },
   ];
 
@@ -80,9 +91,9 @@ NT.missions = (function () {
     if (!s) return;
     if (s.timer) NT.state.missionTimer = s.timer;
     if (s.heat) { NT.state.heat = Math.max(NT.state.heat, s.heat); NT.state.wanted = NT.clamp(Math.floor(NT.state.heat / 1.4), 0, 5); }
-    if (s.kind === 'reach' && s.onfoot && NT.state.missionIndex === 1 && NT.state.missionStage === 0 && !packageMesh) {
+    if (s.kind === 'reach' && s.pickup !== undefined && !packageMesh) {
       packageMesh = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.8, 1.1),
-        new THREE.MeshLambertMaterial({ color: 0xffd23c }));
+        new THREE.MeshLambertMaterial({ color: s.pickup, emissive: 0x333333 }));
       const at = s.at(); packageMesh.position.set(at.x, 0.6, at.z);
       scene.add(packageMesh);
     }
@@ -92,7 +103,8 @@ NT.missions = (function () {
     const S = NT.state;
     const m = current();
     NT.audio.pickup();
-    if (packageMesh && S.missionIndex === 1 && S.missionStage === 0) { scene.remove(packageMesh); packageMesh = null; }
+    const done = stage();
+    if (packageMesh && done && done.pickup !== undefined) { scene.remove(packageMesh); packageMesh = null; }
     S.missionStage++;
     if (S.missionStage >= m.stages.length) {
       S.cash += m.reward;

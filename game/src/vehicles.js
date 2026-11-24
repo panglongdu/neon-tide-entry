@@ -37,7 +37,22 @@ NT.vehicles = (function () {
       const hl = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.16, 0.06), lightMat);
       hl.position.set(s, 0.62, 2.76); g.add(hl);
     }
+    // Tail lights: one shared material per car so braking can flare them.
+    // (No headlight cones — Palmira is a daylight city, beams stay off.)
+    const tailMat = new THREE.MeshBasicMaterial({ color: 0x7a1620 });
+    for (const s of [-0.62, 0.62]) {
+      const tl = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.15, 0.06), tailMat);
+      tl.position.set(s, 0.64, -2.16); g.add(tl);
+    }
+    g.userData.tailMat = tailMat;
     return g;
+  }
+
+  // Brake glow: bright red while the car is shedding speed, dim otherwise.
+  function setBrake(car, on) {
+    if (!car.tailMat || car.braking === on) return;
+    car.braking = on;
+    car.tailMat.color.setHex(on ? 0xff2a30 : 0x7a1620);
   }
 
   function spawn(x, z, heading, opts) {
@@ -52,6 +67,7 @@ NT.vehicles = (function () {
       axis: opts.axis || 'x', line: opts.line || 0, dir: opts.dir || 1,
       lane: opts.lane || 3.6, cruise: 11 + rand() * 5, dead: false,
       sirenPhase: rand() * 6,
+      tailMat: mesh.userData.tailMat || null, braking: false,
     };
     list.push(car);
     return car;
@@ -84,6 +100,7 @@ NT.vehicles = (function () {
       const side = car.axis === 'x' ? Math.abs(o.z - car.z) : Math.abs(o.x - car.x);
       if (ahead > 0 && ahead < 9 && side < 2.2) target = Math.min(target, Math.max(0, (ahead - 5) * 1.6));
     }
+    setBrake(car, target < car.speed - 0.4);
     car.speed = NT.lerp(car.speed, target, Math.min(1, dt * 2));
     const move = car.speed * dt * car.dir;
     if (car.axis === 'x') car.x += move; else car.z += move;
@@ -117,6 +134,7 @@ NT.vehicles = (function () {
   // The player's driving: arcade model, handbrake, building and car bumps.
   function drivePlayer(car, input, dt) {
     const accel = 16, maxF = 30, maxR = -10;
+    const before = car.speed;
     if (input.up) car.speed += accel * dt;
     else if (input.down) car.speed -= (car.speed > 0.5 ? 22 : accel * 0.7) * dt;
     else car.speed = NT.lerp(car.speed, 0, Math.min(1, dt * (car.speed > 0 ? 0.7 : 1.4)));
@@ -145,6 +163,8 @@ NT.vehicles = (function () {
     }
     car.mesh.position.set(car.x, 0, car.z);
     car.mesh.rotation.y = car.heading;
+    // Brake lights flare on the pedal, the handbrake, or a hard speed scrub.
+    setBrake(car, !!(input.brake || (input.down && car.speed > 0.5) || car.speed < before - 6 * dt));
     NT.audio.engine(true, car.speed / maxF);
     return car.speed;
   }

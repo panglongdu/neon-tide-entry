@@ -4,6 +4,7 @@
 NT.hud = (function () {
   const $ = (id) => document.getElementById(id);
   let toastTimer = null, bannerTimer = null;
+  let hurtFlash = 0;   // 0..1, set by flashDamage(), fades in update()
 
   function toast(msg, ms) {
     const t = $('toast');
@@ -22,6 +23,8 @@ NT.hud = (function () {
     $('obj-title').textContent = title;
     $('obj-text').textContent = text;
   }
+  // Red edge-flash when Vex takes a hit; main.js calls this from damage().
+  function flashDamage() { hurtFlash = 1; }
 
   function drawMinimap(focus) {
     const cv = $('minimap'), g = cv.getContext('2d');
@@ -72,8 +75,31 @@ NT.hud = (function () {
       bar.style.display = 'block';
       $('bustfill').style.width = `${Math.min(100, (S.bustMeter / 2.4) * 100)}%`;
     } else bar.style.display = 'none';
+    // Speed badge: a conic arc that sweeps with speed, number in the middle.
+    const speedo = $('speedo');
+    if (S.inCar && S.mode === 'play') {
+      const kmh = Math.round(Math.abs(S.inCar.speed) * 3.6);
+      const frac = NT.clamp(Math.abs(S.inCar.speed) / 30, 0, 1);
+      speedo.style.display = 'flex';
+      speedo.style.background =
+        `conic-gradient(from 210deg, #ffd23c ${frac * 300}deg, rgba(255,255,255,.14) ${frac * 300}deg 300deg, transparent 300deg)`;
+      $('speedo-num').textContent = kmh;
+    } else speedo.style.display = 'none';
+    // Stamina bar: only matters on foot.
+    const stam = $('stamwrap');
+    if (!S.inCar && S.mode === 'play') {
+      stam.style.display = 'block';
+      const fill = $('stamfill');
+      fill.style.width = `${S.stamina}%`;
+      fill.style.background = S.stamina < 25 ? '#ff5d5d' : '#7ae0a3';
+    } else stam.style.display = 'none';
+    // Damage vignette: full flash on a hit, then a quick fade; a low-health
+    // pulse keeps a faint edge while Vex is nearly down.
+    hurtFlash = Math.max(0, hurtFlash - 0.045);
+    const lowHp = (S.mode === 'play' && S.health < 30) ? 0.22 + 0.1 * Math.sin(S.time * 5) : 0;
+    $('vignette').style.opacity = Math.min(0.85, hurtFlash * 0.8 + lowHp).toFixed(2);
     drawMinimap(focus);
   }
 
-  return { toast, banner, setObjective, update };
+  return { toast, banner, setObjective, update, flashDamage };
 })();

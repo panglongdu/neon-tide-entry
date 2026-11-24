@@ -5,6 +5,7 @@ NT.player = (function () {
   const p = {
     x: 6, z: 78, heading: Math.PI, speed: 0, mesh: null, legPhase: 0,
     camYaw: Math.PI, camDist: 15, shootCd: 0,
+    exhausted: false,   // latched at empty stamina until it refills past 25
   };
 
   function buildMesh() {
@@ -86,7 +87,20 @@ NT.player = (function () {
       p.heading = S.inCar.heading;
       return;
     }
-    const run = input.shift ? 8.6 : 5.0;
+    // Sprint stamina: Shift runs at 8.6 while the pool lasts; it drains
+    // fast, refills slower, and an empty pool locks sprint until it
+    // recovers past a quarter — no infinite sprinting across the bay.
+    const moving = (input.up || input.down || input.left || input.right) ? 1 : 0;
+    const sprinting = !!(input.shift && moving && !p.exhausted && S.stamina > 0);
+    if (sprinting) {
+      S.stamina = Math.max(0, S.stamina - dt * 26);
+      if (S.stamina <= 0) { p.exhausted = true; NT.hud.toast('Winded — catch your breath'); }
+    } else {
+      S.stamina = Math.min(NT.STAMINA_MAX, S.stamina + dt * (moving ? 11 : 17));
+      if (p.exhausted && S.stamina > 25) p.exhausted = false;
+    }
+    p.sprinting = sprinting;
+    const run = sprinting ? 8.6 : 5.0;
     let mx = 0, mz = 0;
     if (input.up) mz += 1; if (input.down) mz -= 1;
     if (input.left) mx += 1; if (input.right) mx -= 1;

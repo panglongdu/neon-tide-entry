@@ -15,7 +15,7 @@
   #stars .off { color: rgba(255,255,255,.22); }
   #stats { top: 14px; left: 18px; font-size: 15px; text-shadow: 0 1px 4px rgba(0,0,0,.8); }
   #stats b { color: #ffd23c; }
-  #objective { top: 64px; left: 18px; max-width: 380px; background: rgba(8,12,24,.62);
+  #objective { top: 80px; left: 18px; max-width: 380px; background: rgba(8,12,24,.62);
     border-left: 4px solid #ff5d7a; padding: 8px 12px; border-radius: 0 8px 8px 0; font-size: 14px; }
   #objective h4 { margin: 0 0 2px; color: #ff8fa5; font-size: 12px; letter-spacing: 2px; }
   #objective p { margin: 0; }
@@ -29,6 +29,19 @@
   #bustbar { left: 50%; bottom: 190px; transform: translateX(-50%); width: 260px; height: 12px;
     border: 1px solid rgba(255,255,255,.5); border-radius: 6px; display: none; }
   #bustfill { height: 100%; width: 0%; background: #3f8cff; border-radius: 6px; }
+  #vignette { inset: 0; z-index: 4; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 52%, rgba(190,10,25,.55) 100%); }
+  #speedo { right: 226px; bottom: 18px; width: 86px; height: 86px; border-radius: 50%;
+    display: none; align-items: center; justify-content: center; }
+  #speedo .inner { width: 66px; height: 66px; border-radius: 50%; background: rgba(8,12,24,.85);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #speedo-num { font-size: 24px; font-weight: 800; color: #fff; line-height: 1; }
+  #speedo .unit { font-size: 9px; letter-spacing: 2px; color: #ffd23c; }
+  #stamwrap { top: 46px; left: 18px; width: 170px; height: 8px; display: none;
+    border: 1px solid rgba(255,255,255,.4); border-radius: 4px; background: rgba(8,12,24,.5); }
+  #stamfill { height: 100%; width: 100%; background: #7ae0a3; border-radius: 4px; transition: width .12s; }
+  #stamwrap .lbl { position: absolute; top: 10px; left: 1px; font-size: 9.5px; letter-spacing: 2px; color: #cfd6e4;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8); }
   .screen { position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
     align-items: center; justify-content: center; text-align: center;
     background: linear-gradient(180deg, rgba(10,14,30,.25), rgba(10,14,30,.78)); }
@@ -45,6 +58,8 @@
   #wasted h1 { text-shadow: 0 4px 0 #7a0d1d, 0 10px 28px rgba(0,0,0,.8); }
   #busted { display: none; background: rgba(0,10,40,.45); }
   #complete { display: none; }
+  #pause { display: none; background: rgba(6,8,18,.55); z-index: 11; }
+  #pause h1 { font-size: 44px; text-shadow: 0 4px 0 #2456a8, 0 10px 28px rgba(0,0,0,.8); }
 </style>
 </head>
 <body>
@@ -54,6 +69,9 @@
 <div class="hud" id="stats"></div>
 <div class="hud" id="objective"><h4 id="obj-title">FREE ROAM</h4><p id="obj-text">Explore Palmira Bay. Walk to a car and press E to drive it.</p></div>
 <canvas class="hud" id="minimap" width="190" height="190"></canvas>
+<div class="hud" id="vignette"></div>
+<div class="hud" id="speedo"><div class="inner"><span id="speedo-num">0</span><span class="unit">KM/H</span></div></div>
+<div class="hud" id="stamwrap"><div id="stamfill"></div><span class="lbl">STAMINA</span></div>
 <div class="hud" id="toast"></div>
 <div class="hud" id="banner"><h2 id="banner-title"></h2><p id="banner-sub"></p></div>
 <div class="hud" id="bustbar"><div id="bustfill"></div></div>
@@ -70,7 +88,16 @@
     <button id="btn-free" class="ghost">FREE ROAM</button>
   </div>
   <p class="keys">WASD / arrows — move &amp; drive &nbsp;·&nbsp; E — enter / exit car &nbsp;·&nbsp; SPACE — handbrake / shoot on foot<br>
-  SHIFT — sprint &nbsp;·&nbsp; M — missions &nbsp;·&nbsp; The law watches: theft, hits and gunfire raise your wanted stars.</p>
+  SHIFT — sprint (watch your stamina) &nbsp;·&nbsp; M — missions: four jobs &nbsp;·&nbsp; N — music on/off &nbsp;·&nbsp; ESC — pause<br>
+  The law watches: theft, hits and gunfire raise your wanted stars — at four stars, the helicopter joins the hunt.</p>
+</div>
+
+<div class="screen" id="pause">
+  <h1>PAUSED</h1>
+  <p class="tag">The bay waits. It is good at that.</p>
+  <div><button id="btn-resume">RESUME</button>
+  <button id="btn-quit-menu" class="ghost">BACK TO MENU</button></div>
+  <p class="keys">ESC — resume &nbsp;·&nbsp; N — music on/off</p>
 </div>
 
 <div class="screen" id="wasted"><h1>WASTED</h1><p class="tag">The bay keeps what it catches.</p><div><button id="btn-wasted">RESPAWN AT CLINIC</button></div></div>

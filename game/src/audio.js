@@ -3,6 +3,29 @@
 'use strict';
 NT.audio = (function () {
   let ctx = null, engineOsc = null, engineGain = null, sirenOsc = null, sirenGain = null;
+  // Music: a slow synthwave bassline sequenced note by note. A-minor pulse,
+  // one bar of eighth notes every 3.2 s, kept well under the effects.
+  let musicTimer = null, musicStep = 0, musicGain = null;
+  const BASSLINE = [55, 0, 55, 55, 0, 65.41, 0, 55, 49, 0, 49, 49, 0, 73.42, 82.41, 0];
+  function bassNote(freq) {
+    const c = ac(); if (!c || !freq) return;
+    const o = c.createOscillator(), g = c.createGain(), f = c.createBiquadFilter();
+    o.type = 'sawtooth'; o.frequency.value = freq;
+    f.type = 'lowpass'; f.frequency.value = 300; f.Q.value = 4;
+    g.gain.setValueAtTime(0.16, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.34);
+    o.connect(f); f.connect(g); g.connect(musicGain); o.start(); o.stop(c.currentTime + 0.36);
+  }
+  function startMusic() {
+    const c = ac(); if (!c || musicTimer) return;
+    if (!musicGain) { musicGain = c.createGain(); musicGain.gain.value = 0.5; musicGain.connect(c.destination); }
+    NT.state.musicOn = true;
+    musicTimer = setInterval(() => { bassNote(BASSLINE[musicStep % BASSLINE.length]); musicStep++; }, 200);
+  }
+  function stopMusic() {
+    NT.state.musicOn = false;
+    if (musicTimer) { clearInterval(musicTimer); musicTimer = null; }
+  }
   function ac() {
     if (!ctx) { try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ctx = null; } }
     return ctx;
@@ -27,6 +50,13 @@ NT.audio = (function () {
   }
   return {
     unlock() { ac(); },
+    // Started by main.js on the first user gesture; N toggles it after that.
+    musicStart() { startMusic(); },
+    musicToggle() {
+      if (musicTimer) { stopMusic(); return false; }
+      startMusic(); return true;
+    },
+    hurt() { noise(0.16, 0.2); blip(70, 0.22, 'sine', 0.2, -30); },
     pickup() { blip(880, 0.12, 'sine', 0.1); setTimeout(() => blip(1320, 0.16, 'sine', 0.1), 70); },
     cash() { blip(1560, 0.09, 'triangle', 0.1); setTimeout(() => blip(2090, 0.14, 'triangle', 0.09), 60); },
     shot() { noise(0.12, 0.22); blip(160, 0.1, 'sawtooth', 0.1, -100); },

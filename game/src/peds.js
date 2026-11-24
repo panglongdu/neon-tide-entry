@@ -7,7 +7,7 @@ NT.peds = (function () {
   let scene = null;
   const SHIRTS = [0xff6b6b, 0xfeca57, 0x48dbfb, 0x1dd1a1, 0xf368e0, 0xffffff, 0x54a0ff, 0x5f27cd];
 
-  function makePed(x, z) {
+  function makePed(x, z, beach) {
     const g = new THREE.Group();
     const shirt = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.85, 0.34),
       new THREE.MeshLambertMaterial({ color: SHIRTS[Math.floor(rand() * SHIRTS.length)] }));
@@ -23,7 +23,7 @@ NT.peds = (function () {
     const ped = {
       mesh: g, x, z, heading: rand() * Math.PI * 2, speed: 0,
       walkSpeed: 1.6 + rand() * 1.4, state: 'walk', panic: 0, dead: false, legPhase: rand() * 6,
-      tx: x, tz: z,
+      tx: x, tz: z, beach: !!beach,   // beach strollers keep to the sand strip
     };
     pickTarget(ped);
     list.push(ped);
@@ -31,6 +31,12 @@ NT.peds = (function () {
   }
 
   function pickTarget(ped) {
+    if (ped.beach) {
+      // Amble along the shoreline: long lazy walks parallel to the water.
+      ped.tx = NT.clamp(ped.x + (rand() - 0.5) * 260, -NT.WORLD + 12, NT.WORLD - 12);
+      ped.tz = NT.BEACH_NEAR + 3 + rand() * (NT.BEACH_FAR - NT.BEACH_NEAR - 8);
+      return;
+    }
     // Stroll to a point up the sidewalk: mostly along the avenues.
     const P = NT.PITCH;
     const gx = NT.clamp(Math.round(ped.x / P) * P + (rand() - 0.5) * 10, -NT.WORLD + 10, NT.WORLD - 10);
@@ -80,9 +86,15 @@ NT.peds = (function () {
       if (car && Math.abs(car.speed) > 5 && NT.dist2(p.x, p.z, car.x, car.z) < 4.4) hurt(p, true);
       // Keep the crowd near the action, recycle the far ones.
       if (focus && NT.dist2(p.x, p.z, focus.x, focus.z) > 320 * 320) {
-        const a = rand() * Math.PI * 2, r = 60 + rand() * 60;
-        p.x = NT.clamp(focus.x + Math.cos(a) * r, -NT.WORLD, NT.WORLD);
-        p.z = NT.clamp(focus.z + Math.sin(a) * r, -NT.WORLD, NT.WATER_Z - 6);
+        if (p.beach) {
+          // Beachgoers reappear further along the same shoreline.
+          p.x = NT.clamp(focus.x + (rand() - 0.5) * 160, -NT.WORLD + 12, NT.WORLD - 12);
+          p.z = NT.BEACH_NEAR + 4 + rand() * (NT.BEACH_FAR - NT.BEACH_NEAR - 10);
+        } else {
+          const a = rand() * Math.PI * 2, r = 60 + rand() * 60;
+          p.x = NT.clamp(focus.x + Math.cos(a) * r, -NT.WORLD, NT.WORLD);
+          p.z = NT.clamp(focus.z + Math.sin(a) * r, -NT.WORLD, NT.WATER_Z - 6);
+        }
         pickTarget(p);
       }
     }
@@ -94,6 +106,11 @@ NT.peds = (function () {
       const a = rand() * Math.PI * 2, r = 20 + rand() * 130;
       makePed(NT.clamp(focus.x + Math.cos(a) * r, -NT.WORLD, NT.WORLD),
         NT.clamp(focus.z + Math.sin(a) * r, -NT.WORLD, NT.WATER_Z - 8));
+    }
+    // A handful of beachgoers stroll the sand between the city and the surf.
+    for (let i = 0; i < 9; i++) {
+      makePed((rand() - 0.5) * 2 * NT.WORLD * 0.9,
+        NT.BEACH_NEAR + 4 + rand() * (NT.BEACH_FAR - NT.BEACH_NEAR - 10), true);
     }
   }
 

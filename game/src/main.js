@@ -19,12 +19,33 @@
     KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
     ShiftLeft: 'shift', ShiftRight: 'shift',
   };
-  addEventListener('keydown', (e) => {
+  let musicStarted = false;
+  function firstGesture() {
     NT.audio.unlock();
+    // The bassline starts on the first user gesture (autoplay rules) and
+    // plays on until N turns it off.
+    if (!musicStarted) { musicStarted = true; NT.audio.musicStart(); }
+  }
+  function setPaused(on) {
+    const S = NT.state;
+    if (S.mode !== 'play') return;
+    S.paused = on;
+    document.getElementById('pause').style.display = on ? 'flex' : 'none';
+    if (on) { NT.audio.engine(false); NT.audio.siren(false); }
+  }
+  addEventListener('keydown', (e) => {
+    firstGesture();
+    if (e.code === 'Escape') { setPaused(!NT.state.paused); return; }
+    if (NT.state.paused) return;
     if (KEYS[e.code]) { input[KEYS[e.code]] = 1; e.preventDefault(); }
     if (e.code === 'Space') { input.brake = 1; input.shoot = 1; e.preventDefault(); }
     if (e.code === 'KeyE' && NT.state.mode === 'play') NT.player.tryEnterExit();
     if (e.code === 'KeyM' && NT.state.mode === 'play') NT.game.nextJob();
+    if (e.code === 'KeyN') {
+      const on = NT.audio.musicToggle();
+      musicStarted = true;
+      if (NT.state.mode === 'play') NT.hud.toast(on ? 'Music on — Palmira nights radio' : 'Music off');
+    }
   });
   addEventListener('keyup', (e) => {
     if (KEYS[e.code]) input[KEYS[e.code]] = 0;
@@ -40,7 +61,7 @@
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify({
         cash: NT.state.cash, storyDone: NT.state.storyDone,
-        nextJob: NT.state.storyDone ? 3 : (NT.game._nextJob || 0),
+        nextJob: NT.state.storyDone ? NT.missions.MISSIONS.length : (NT.game._nextJob || 0),
       }));
     } catch (e) {}
   }
@@ -49,9 +70,11 @@
   }
 
   function startGame(freeRoam) {
-    NT.audio.unlock();
+    firstGesture();
     const S = NT.state;
     S.mode = 'play'; S.health = 100; S.wanted = 0; S.heat = 0; S.bustMeter = 0;
+    S.stamina = NT.STAMINA_MAX; S.paused = false;
+    document.getElementById('pause').style.display = 'none';
     document.getElementById('menu').style.display = 'none';
     document.getElementById('wasted').style.display = 'none';
     document.getElementById('busted').style.display = 'none';
@@ -119,6 +142,13 @@
   document.getElementById('btn-wasted').onclick = () => startGame(true);
   document.getElementById('btn-busted').onclick = () => startGame(true);
   document.getElementById('btn-roam').onclick = () => startGame(true);
+  document.getElementById('btn-resume').onclick = () => setPaused(false);
+  document.getElementById('btn-quit-menu').onclick = () => {
+    setPaused(false);
+    NT.state.mode = 'menu';
+    NT.audio.engine(false); NT.audio.siren(false);
+    document.getElementById('menu').style.display = 'flex';
+  };
   if (!load()) document.getElementById('btn-continue').style.display = 'none';
 
   // Build the world.
@@ -138,6 +168,8 @@
         if (Math.abs(c.speed) > 8 && NT.dist2(c.x, c.z, NT.player.x, NT.player.z) < 4.6) {
           S.health -= 34;
           NT.audio.crash();
+          NT.audio.hurt();
+          NT.hud.flashDamage();
           NT.hud.toast('You got clipped by traffic');
           NT.player._p.x += (NT.player.x - c.x) * 1.4;
           NT.player._p.z += (NT.player.z - c.z) * 1.4;
@@ -154,6 +186,7 @@
     let dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     const S = NT.state;
+    if (S.paused) { renderer.render(scene, camera); return; }  // frozen world, live frame
     if (S.mode === 'play' || S.mode === 'menu') {
       S.time += dt;
       const focus = NT.player.focus();

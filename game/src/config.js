@@ -8,6 +8,10 @@ const NT = {
   GRID: 4,            // blocks from centre to edge (city is 2*GRID+1 blocks wide)
   WATER_Z: 402,       // z beyond this is open water
   WORLD: 430,         // playable half-extent
+  BEACH_NEAR: 384,    // sand strip the beach strollers walk: z in [BEACH_NEAR, BEACH_FAR]
+  BEACH_FAR: 428,
+  STAMINA_MAX: 100,   // sprint stamina pool (player.js drains and refills it)
+  PARK_BLOCK: { bx: 1, bz: 1 },  // the one block left unbuilt: Palmira Green (city.js)
 
   // Palette: sun-soaked modern coastal city.
   SKY: 0x8ec9e8, FOG: 0xc7dde8,
@@ -24,6 +28,9 @@ const NT = {
     missionStage: 0,
     missionTimer: -1,
     storyDone: false,
+    stamina: 100,           // 0..STAMINA_MAX, sprinting on foot drains it
+    paused: false,          // Esc pause overlay (main.js)
+    musicOn: false,         // bassline loop state (audio.js, toggled with N)
     inCar: null,            // vehicle the player drives, or null on foot
     shots: new URLSearchParams(location.search).has('shot'),
   },

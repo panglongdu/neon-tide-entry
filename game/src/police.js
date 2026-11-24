@@ -6,6 +6,59 @@ NT.police = (function () {
   const units = [];       // police vehicles currently hunting
   let scene = null;
   let spawnClock = 0, unseenClock = 0;
+  // The search helicopter: appears at four stars and up. Purely a visual
+  // threat plus one pressure — while its spotlight is on you, you are never
+  // "unseen", so the wanted cool-down cannot bleed away.
+  let heli = null, heliAngle = 0;
+
+  function buildHeli() {
+    const g = new THREE.Group();
+    const dark = new THREE.MeshLambertMaterial({ color: 0x1c2f57 });
+    const body = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.7, 4.6), dark);
+    g.add(body);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(1.05, 8, 7),
+      new THREE.MeshLambertMaterial({ color: 0x9fd4e8 }));
+    nose.position.set(0, 0.1, 2.2); nose.scale.set(0.95, 0.8, 1); g.add(nose);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 4.4), dark);
+    tail.position.set(0, 0.3, -4.2); g.add(tail);
+    const fin = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.3, 0.7), dark);
+    fin.position.set(0, 0.7, -6.3); g.add(fin);
+    const rotor = new THREE.Mesh(new THREE.BoxGeometry(11, 0.08, 0.7),
+      new THREE.MeshBasicMaterial({ color: 0x22262e }));
+    rotor.position.y = 1.25; g.add(rotor);
+    g.userData.rotor = rotor;
+    const skidMat = new THREE.MeshLambertMaterial({ color: 0x11141a });
+    for (const s of [-0.9, 0.9]) {
+      const skid = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.14, 3.6), skidMat);
+      skid.position.set(s, -1.15, 0.2); g.add(skid);
+    }
+    // Spotlight: a translucent cone from the belly to the street.
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 8.5, 36, 14, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false }));
+    cone.position.y = -18.5; g.add(cone);
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.32, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xfff6c8 }));
+    lamp.position.y = -0.95; g.add(lamp);
+    g.visible = false;
+    scene.add(g);
+    return g;
+  }
+
+  function updateHeli(dt, focus) {
+    const active = NT.state.wanted >= 4 && NT.state.mode === 'play';
+    if (!heli) { if (active) heli = buildHeli(); else return false; }
+    heli.visible = active;
+    if (!active) return false;
+    heliAngle += dt * 0.45;
+    const R = 27, H = 35;
+    const hx = focus.x + Math.cos(heliAngle) * R;
+    const hz = focus.z + Math.sin(heliAngle) * R;
+    heli.position.set(hx, H + Math.sin(NT.state.time * 1.3) * 1.2, hz);
+    // Face along the orbit tangent (heading -angle), banked slightly inward.
+    heli.rotation.set(0, -heliAngle, 0.16);
+    heli.userData.rotor.rotation.y += dt * 28;
+    return true;   // the spotlight counts as being seen
+  }
 
   NT.crime = function (kind, x, z, severity) {
     if (NT.state.mode !== 'play') return;
@@ -75,6 +128,7 @@ NT.police = (function () {
         car.speed *= 0.82; u.speed *= 0.6; NT.audio.crash();
       }
     }
+    if (updateHeli(dt, focus)) anySee = true;
     NT.audio.siren(S.wanted > 0 && units.length > 0 && NT.state.mode === 'play');
     // Cool-down: stay unseen and the heat bleeds away.
     if (S.wanted > 0) {
@@ -102,5 +156,5 @@ NT.police = (function () {
   }
 
   function init(sc) { scene = sc; }
-  return { init, update, units };
+  return { init, update, units, get heli() { return heli; } };
 })();
